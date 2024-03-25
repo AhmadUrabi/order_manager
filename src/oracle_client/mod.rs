@@ -7,10 +7,10 @@ impl OraclePool {
         let host = std::env::var("ORACLE_HOST").unwrap();
 
         let pool = oracle::pool::PoolBuilder::new(username, password, host)
-            .max_connections(20)
-            .build()
-            .unwrap();
-        OraclePool(pool)
+        .min_connections(8) // Min == Max always
+        .max_connections(8)
+        .build();
+        OraclePool(pool.unwrap())
     }
     pub fn get_conn(&self) -> oracle::Connection {
         self.0.get().unwrap()
