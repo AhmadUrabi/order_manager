@@ -1,6 +1,9 @@
 use crate::models::line_item::LineItem;
 
-pub fn create_order(items: Vec<LineItem>, connection: oracle::Connection) -> Result<(), Box<dyn std::error::Error>>{
+pub fn create_order(
+    items: Vec<LineItem>,
+    connection: oracle::Connection,
+) -> Result<(), Box<dyn std::error::Error>> {
     // Get Store ID
     let store_id = get_correct_store_id(&items, &connection);
     if store_id.is_err() {
@@ -23,14 +26,19 @@ pub fn create_order(items: Vec<LineItem>, connection: oracle::Connection) -> Res
     Ok(())
 }
 
-pub fn create_master_record(connection: &oracle::Connection, store_id: &i32, order_id: &i32) -> Result<(), Box<dyn std::error::Error>>{
+pub fn create_master_record(
+    connection: &oracle::Connection,
+    store_id: &i32,
+    order_id: &i32,
+) -> Result<(), Box<dyn std::error::Error>> {
     let sql = r#"DECLARE
     v_open_trans_no number;
     v_year_trans_no number;
     v_period_trans_no number;
     BEGIN
         inv_pkg.get_max_trans_no(2, 13, 2, extract(year from sysdate), extract(month from sysdate), v_open_trans_no, v_year_trans_no, v_period_trans_no);
-
+        v_year_trans_no = v_year_trans_no + (100000 * 1) + (1000000 * :v_store_id);
+        v_period_trans_no = v_period_trans_no + (100000 * 1) + (1000000 * :v_store_id);
         -- Insert Master Record
 
         INSERT INTO jhc.INV_STORE_TRANS_MAS(COMPANY_ID,TRANS_ID,OPEN_TRANS_NO,STORE_ID,YEAR_CODE,PERIOD_CODE,YEAR_TRANS_NO,PERIOD_TRANS_NO,TRANS_STATUS,TRANS_DATE,ACC_ARAP,PERSON_ID,ACC_ID,CURRENCY_ID,EXCHANGE_BASE_FACTOR,REFERENCE_NO,REFERENCE_DATE,REFERENCE_ID,IS_AUTO,FROM_SYSTEM,PERSON_NAME,DEFAULT_SALE_ID,VOUCHER_ID,OPEN_VOUCHER_NO,USER_CREATE,PC_NAME_CREATE,DATE_CREATED, CASH_DEBIT, DISCOUNT_TYPE, DISCOUNT_PERCENT, IS_PRINTED,HAS_SALE_TAX,PRICE_INCLUDES_TAX, LIST_ID, ADDED_VALUE_CALCED, IS_COSTED, TERM_ID, HAS_REFUND_TRANS)
@@ -39,13 +47,16 @@ pub fn create_master_record(connection: &oracle::Connection, store_id: &i32, ord
     END;
     "#;
     let mut stmt = connection.statement(sql).build()?;
-    stmt.execute_named(&[("v_store_id",store_id),("v_order_id",order_id)])?;
-    
+    stmt.execute_named(&[("v_store_id", store_id), ("v_order_id", order_id)])?;
+
     connection.commit()?;
     Ok(())
 }
 
-pub fn get_last_master_record_id(connection: &oracle::Connection, order_id: &i32) -> Result<i32, Box<dyn std::error::Error>>{
+pub fn get_last_master_record_id(
+    connection: &oracle::Connection,
+    order_id: &i32,
+) -> Result<i32, Box<dyn std::error::Error>> {
     let order_id_string = order_id.to_string();
     let sql = r#"SELECT OPEN_TRANS_NO from jhc.INV_STORE_TRANS_MAS where REFERENCE_NO = :1"#;
     let mut stmt = connection.statement(sql).build()?;
@@ -56,12 +67,14 @@ pub fn get_last_master_record_id(connection: &oracle::Connection, order_id: &i32
         result = row.get(0)?;
     }
     Ok(result)
-
 }
 
-pub fn get_correct_store_id(items: &Vec<LineItem>, conn: &oracle::Connection) -> Result<i32, Box<dyn std::error::Error>>{
+pub fn get_correct_store_id(
+    items: &Vec<LineItem>,
+    conn: &oracle::Connection,
+) -> Result<i32, Box<dyn std::error::Error>> {
     let sql = r#"SELECT QTY_STORE_02, QTY_STORE_08 FROM ODBC_JHC.JHC_INVDATA WHERE ITEM_MAIN_BARCODE = :1"#;
-    let mut stores: Vec<(i32,i32,i32)> = Vec::new();
+    let mut stores: Vec<(i32, i32, i32)> = Vec::new();
     for item in items {
         let mut stmt = conn.statement(sql).build()?;
         let res = stmt.query(&[&item.barcode])?;
@@ -95,7 +108,12 @@ pub fn get_correct_store_id(items: &Vec<LineItem>, conn: &oracle::Connection) ->
     }
 }
 
-pub fn create_detail_records(connection: &oracle::Connection, products: &Vec<LineItem>, store_id: i32, open_trans_no: i32) -> Result<(), Box<dyn std::error::Error>>{
+pub fn create_detail_records(
+    connection: &oracle::Connection,
+    products: &Vec<LineItem>,
+    store_id: i32,
+    open_trans_no: i32,
+) -> Result<(), Box<dyn std::error::Error>> {
     let sql = r#"
     DECLARE
     v_id number;
@@ -111,27 +129,36 @@ VALUES (2, 13, :v_open_trans_no, :v_serial_id, :v_store_id, v_id, 1, :v_trans_qu
         total_discount += product.price * 0.16 * product.quantity as f64;
         let mut stmt = connection.statement(sql).build()?;
         stmt.execute_named(&[
-            ("v_open_trans_no",&open_trans_no),
-            ("v_serial_id",&row_order),
-            ("v_store_id",&store_id),
-            ("v_trans_quantity",&product.quantity),
-            ("v_trans_amount_curr",&(product.price)),
-            ("v_trans_amount_base",&product.price),
-            ("v_tax_amount",&(product.price * 0.16 * product.quantity as f64)),
-            ("v_price_notax",&(product.price / 1.16 * product.quantity as f64)),
-            ("v_price_wtax",&(product.price * product.quantity as f64)),
-            ("v_tax_amount_base",&(product.price * 0.16)),
-            ("v_price_notax_base",&(product.price / 1.16)),
-            ("v_price_wtax_base",&(product.price)),
-            ("v_item_barcode",&product.barcode),
-            ("v_item_sku",&product.sku),
-            ("v_disc_per",&0),
-            ("v_mas_discount_amount",&(product.price * 0.16 * product.quantity as f64)),
-            ("v_mas_discount_amount_base",&(product.price * 0.16)),
-            ("v_first_disc_amt_base",&0),
-            ("v_second_disc_amt_base",&0),
-            ("v_base_unit_price_notax",&(product.price)),
-            ("v_row_order",&row_order),
+            ("v_open_trans_no", &open_trans_no),
+            ("v_serial_id", &row_order),
+            ("v_store_id", &store_id),
+            ("v_trans_quantity", &product.quantity),
+            ("v_trans_amount_curr", &(product.price)),
+            ("v_trans_amount_base", &product.price),
+            (
+                "v_tax_amount",
+                &(product.price * 0.16 * product.quantity as f64),
+            ),
+            (
+                "v_price_notax",
+                &(product.price / 1.16 * product.quantity as f64),
+            ),
+            ("v_price_wtax", &(product.price * product.quantity as f64)),
+            ("v_tax_amount_base", &(product.price * 0.16)),
+            ("v_price_notax_base", &(product.price / 1.16)),
+            ("v_price_wtax_base", &(product.price)),
+            ("v_item_barcode", &product.barcode),
+            ("v_item_sku", &product.sku),
+            ("v_disc_per", &0),
+            (
+                "v_mas_discount_amount",
+                &(product.price * 0.16 * product.quantity as f64),
+            ),
+            ("v_mas_discount_amount_base", &(product.price * 0.16)),
+            ("v_first_disc_amt_base", &0),
+            ("v_second_disc_amt_base", &0),
+            ("v_base_unit_price_notax", &(product.price)),
+            ("v_row_order", &row_order),
         ])?;
         row_order += 1;
     }
@@ -139,8 +166,10 @@ VALUES (2, 13, :v_open_trans_no, :v_serial_id, :v_store_id, v_id, 1, :v_trans_qu
     let sql_2 = r#"
     UPDATE jhc.INV_STORE_TRANS_MAS SET DISCOUNT_AMOUNT = :v_total_discount WHERE OPEN_TRANS_NO = :v_open_trans_no AND TRANS_ID = 13"#;
     let mut stmt_2 = connection.statement(sql_2).build()?;
-    stmt_2.execute_named(&[("v_total_discount",&total_discount),("v_open_trans_no",&open_trans_no)])?;
+    stmt_2.execute_named(&[
+        ("v_total_discount", &total_discount),
+        ("v_open_trans_no", &open_trans_no),
+    ])?;
     connection.commit()?;
     Ok(())
 }
-
