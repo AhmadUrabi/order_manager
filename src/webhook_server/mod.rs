@@ -19,7 +19,7 @@ async fn create_order(
         for item in line_items {
             let line_item = LineItem {
                 id: item["id"].as_i64().unwrap() as i32,
-                name: item["name"].as_i64().unwrap() as i32,
+                name: item["name"].as_str().unwrap().to_string(),
                 sku: item["sku"].as_str().unwrap().to_string(),
                 barcode: item["barcode"].as_str().unwrap().to_string(),
                 quantity: item["quantity"].as_i64().unwrap() as i32,
