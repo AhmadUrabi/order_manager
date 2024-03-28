@@ -12,7 +12,7 @@ pub fn create_order(
     let store_id = store_id.unwrap();
 
     // CREATE MASTER RECORD
-    let order_id = 3112;
+    let order_id = 3113;
     create_master_record(&connection, &store_id, &order_id)?;
     println!("Master Record Created");
 
@@ -37,8 +37,8 @@ pub fn create_master_record(
     v_period_trans_no number;
     BEGIN
         inv_pkg.get_max_trans_no(2, 13, 2, extract(year from sysdate), extract(month from sysdate), v_open_trans_no, v_year_trans_no, v_period_trans_no);
-        v_year_trans_no = v_year_trans_no + (100000 * 1) + (1000000 * :v_store_id);
-        v_period_trans_no = v_period_trans_no + (100000 * 1) + (1000000 * :v_store_id);
+        v_year_trans_no := v_year_trans_no + (100000 * 1) + (1000000 * :v_store_id);
+        v_period_trans_no := v_period_trans_no + (100000 * 1) + (1000000 * :v_store_id);
         -- Insert Master Record
 
         INSERT INTO jhc.INV_STORE_TRANS_MAS(
@@ -323,9 +323,9 @@ pub fn create_detail_records(
                 &(product.price / 1.16 * product.quantity as f64),
             ),
             ("v_price_wtax", &(product.price * product.quantity as f64)),
-            ("v_tax_amount_base", &(product.price * 0.16)),
-            ("v_price_notax_base", &(product.price / 1.16)),
-            ("v_price_wtax_base", &(product.price)),
+            ("v_tax_amount_base", &(product.price * 0.16 * product.quantity as f64)),
+            ("v_price_notax_base", &(product.price / 1.16 * product.quantity as f64)),
+            ("v_price_wtax_base", &(product.price * product.quantity as f64)),
             ("v_item_barcode", &product.barcode),
             ("v_item_sku", &product.sku),
             ("v_disc_per", &0),
@@ -333,7 +333,7 @@ pub fn create_detail_records(
                 "v_mas_discount_amount",
                 &(product.price * 0.16 * product.quantity as f64),
             ),
-            ("v_mas_discount_amount_base", &(product.price * 0.16)),
+            ("v_mas_discount_amount_base", &(product.price * 0.16 * product.quantity as f64)),
             ("v_first_disc_amt_base", &0),
             ("v_second_disc_amt_base", &0),
             ("v_base_unit_price_notax", &(product.price)),
