@@ -1,9 +1,13 @@
 use crate::models::line_item::LineItem;
 
 pub fn create_order(
+    order_id: &i32,
     items: Vec<LineItem>,
     connection: oracle::Connection,
 ) -> Result<(), Box<dyn std::error::Error>> {
+
+    println!("{}", order_id);
+
     // Get Store ID
     let store_id = get_correct_store_id(&items, &connection);
     if store_id.is_err() {
@@ -12,7 +16,6 @@ pub fn create_order(
     let store_id = store_id.unwrap();
 
     // CREATE MASTER RECORD
-    let order_id = 3113;
     create_master_record(&connection, &store_id, &order_id)?;
     println!("Master Record Created");
 
@@ -150,11 +153,12 @@ pub fn get_correct_store_id(
     items: &Vec<LineItem>,
     conn: &oracle::Connection,
 ) -> Result<i32, Box<dyn std::error::Error>> {
-    let sql = r#"SELECT QTY_STORE_02, QTY_STORE_08 FROM ODBC_JHC.JHC_INVDATA WHERE ITEM_MAIN_BARCODE = :1"#;
+    println!("Getting Store ID");
+    let sql = r#"SELECT QTY_STORE_02, QTY_STORE_08 FROM ODBC_JHC.JHC_INVDATA WHERE FOREIGN_ITEM_CODE = :1"#;
     let mut stores: Vec<(i32, i32, i32)> = Vec::new();
     for item in items {
         let mut stmt = conn.statement(sql).build()?;
-        let res = stmt.query(&[&item.barcode])?;
+        let res = stmt.query(&[&item.sku])?;
         for i in res {
             if i.is_ok() {
                 let row = i.unwrap();
@@ -177,8 +181,10 @@ pub fn get_correct_store_id(
         }
     }
     if use_store_2 {
+        println!("Store 2");
         Ok(2)
     } else if use_store_8 {
+        println!("Store 8");
         Ok(8)
     } else {
         Err("Not enough quantity in any store".into())
@@ -194,8 +200,10 @@ pub fn create_detail_records(
     let sql = r#"
     DECLARE
     v_id number;
+    v_item_barcode number;
     BEGIN
         SELECT ITEM_ID INTO v_id FROM ODBC_JHC.JHC_INVDATA ji WHERE FOREIGN_ITEM_CODE = :v_item_sku;
+        SELECT ITEM_MAIN_BARCODE INTO v_item_barcode FROM ODBC_JHC.JHC_INVDATA ji WHERE FOREIGN_ITEM_CODE = :v_item_sku;
         INSERT INTO jhc.INV_STORE_TRANS_DTL(
         COMPANY_ID,
         TRANS_ID,
@@ -282,7 +290,7 @@ pub fn create_detail_records(
         :v_tax_amount_base,
         :v_price_notax_base,
         :v_price_wtax_base,
-        :v_item_barcode,
+        v_item_barcode,
         :v_item_sku,
         :v_disc_per,
         0,
@@ -326,7 +334,7 @@ pub fn create_detail_records(
             ("v_tax_amount_base", &(product.price * 0.16 * product.quantity as f64)),
             ("v_price_notax_base", &(product.price / 1.16 * product.quantity as f64)),
             ("v_price_wtax_base", &(product.price * product.quantity as f64)),
-            ("v_item_barcode", &product.barcode),
+            // ("v_item_barcode", &product.barcode),
             ("v_item_sku", &product.sku),
             ("v_disc_per", &0),
             (
