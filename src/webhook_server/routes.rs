@@ -10,8 +10,13 @@ pub async fn create_order(
 ) -> impl Responder {
     if req_body.is_some() {
         let body = req_body.unwrap();
-        let shopify_header = request.headers().get("X-Shopify-Hmac-SHA256").unwrap().to_str().unwrap();
-        
+        let shopify_header = request
+            .headers()
+            .get("X-Shopify-Hmac-SHA256")
+            .unwrap()
+            .to_str()
+            .unwrap();
+
         match super::verify_webhook(shopify_header, body.as_str()) {
             Ok(valid) => {
                 if !valid {
@@ -31,7 +36,7 @@ pub async fn create_order(
         let order_id = order["order_number"].as_i64().unwrap() as i32;
         let pool = pool.pool.lock().await;
         let connection = pool.get_conn();
-        
+
         for item in line_items {
             let line_item = LineItem {
                 id: item["id"].as_i64().unwrap() as i32,
@@ -39,7 +44,11 @@ pub async fn create_order(
                 sku: item["sku"].as_str().unwrap().to_string(),
                 quantity: item["quantity"].as_i64().unwrap() as i32,
                 price: item["price"].as_str().unwrap().parse::<f64>().unwrap(),
-                discount: item["total_discount"].as_str().unwrap().parse::<f64>().unwrap(),
+                discount: item["total_discount"]
+                    .as_str()
+                    .unwrap()
+                    .parse::<f64>()
+                    .unwrap(),
             };
             line_items_vec.push(line_item);
         }

@@ -128,9 +128,18 @@ pub fn create_detail_records(
                 &(product.price / 1.16 * product.quantity as f64),
             ),
             ("v_price_wtax", &(product.price * product.quantity as f64)),
-            ("v_tax_amount_base", &(product.price * 0.16 * product.quantity as f64)),
-            ("v_price_notax_base", &(product.price / 1.16 * product.quantity as f64)),
-            ("v_price_wtax_base", &(product.price * product.quantity as f64)),
+            (
+                "v_tax_amount_base",
+                &(product.price * 0.16 * product.quantity as f64),
+            ),
+            (
+                "v_price_notax_base",
+                &(product.price / 1.16 * product.quantity as f64),
+            ),
+            (
+                "v_price_wtax_base",
+                &(product.price * product.quantity as f64),
+            ),
             // ("v_item_barcode", &product.barcode),
             ("v_item_sku", &product.sku),
             ("v_disc_per", &0),
@@ -138,7 +147,10 @@ pub fn create_detail_records(
                 "v_mas_discount_amount",
                 &(product.price * 0.16 * product.quantity as f64),
             ),
-            ("v_mas_discount_amount_base", &(product.price * 0.16 * product.quantity as f64)),
+            (
+                "v_mas_discount_amount_base",
+                &(product.price * 0.16 * product.quantity as f64),
+            ),
             ("v_first_disc_amt_base", &0),
             ("v_second_disc_amt_base", &0),
             ("v_base_unit_price_notax", &(product.price)),

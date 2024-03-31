@@ -1,6 +1,6 @@
 use std::env;
 
-use actix_web::{App, HttpServer };
+use actix_web::{App, HttpServer};
 use hmac::Mac;
 use tokio::sync::Mutex;
 
@@ -32,8 +32,7 @@ impl WebServer {
     }
 }
 
-
-pub fn verify_webhook(header: &str, body: &str) -> Result<bool, Box<dyn std::error::Error>>{
+pub fn verify_webhook(header: &str, body: &str) -> Result<bool, Box<dyn std::error::Error>> {
     let secret = env::var("WEBHOOK_SECRET").unwrap();
     let mut mac = hmac::Hmac::<sha2::Sha256>::new_from_slice(secret.as_bytes())?;
     mac.update(body.as_bytes());

@@ -11,7 +11,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let pool = oracle_client::OraclePool::new();
     println!("Starting webhook server");
     let _ = webhook_server::WebServer::start(pool).await;
-    
+
     // For testing purposes
     // let _ = order_manager::create_order(&100,Vec::new(),pool.get_conn());
     Ok(())
