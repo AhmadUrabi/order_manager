@@ -1,7 +1,11 @@
+use std::env;
+
 use actix_web::{App, HttpServer };
+use hmac::Mac;
 use tokio::sync::Mutex;
 
 use crate::oracle_client::OraclePool;
+use base64::prelude::*;
 
 pub mod routes;
 
@@ -26,4 +30,13 @@ impl WebServer {
         .run()
         .await
     }
+}
+
+
+pub fn verify_webhook(header: &str, body: &str) -> Result<bool, Box<dyn std::error::Error>>{
+    let secret = env::var("WEBHOOK_SECRET").unwrap();
+    let mut mac = hmac::Hmac::<sha2::Sha256>::new_from_slice(secret.as_bytes())?;
+    mac.update(body.as_bytes());
+    let calculated_hmac = BASE64_STANDARD.encode(mac.finalize().into_bytes().as_slice());
+    Ok(calculated_hmac == header)
 }

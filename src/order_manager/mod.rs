@@ -21,7 +21,7 @@ pub fn create_order(
     // PERPARE DETAIL INSERT
     create_detail_records(&connection, &items, store_id, open_trans_no)?;
     println!("Detail Records Created");
-    Ok(1)
+    Ok(open_trans_no)
 }
 
 pub fn create_master_record(
@@ -31,10 +31,8 @@ pub fn create_master_record(
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("Creating Master Record");
     let sql = fs::read_to_string(path::Path::new("src/sql/create_master_record.sql"))?;
-    print!("{}", sql);
     let mut stmt = connection.statement(sql.as_str()).build()?;
     stmt.execute_named(&[("v_store_id", store_id), ("v_order_id", order_id)])?;
-
     connection.commit()?;
     Ok(())
 }
@@ -44,16 +42,18 @@ pub fn get_last_master_record_id(
     order_id: &i32,
 ) -> Result<i32, Box<dyn std::error::Error>> {
     let order_id_string = order_id.to_string();
-    let sql = r#"SELECT OPEN_TRANS_NO from jhc.INV_STORE_TRANS_MAS where REFERENCE_NO = :1"#;
-    let mut stmt = connection.statement(sql).build()?;
+    let sql = fs::read_to_string(path::Path::new("src/sql/get_last_master_record_id.sql"))?;
+    let mut stmt = connection.statement(sql.as_str()).build()?;
     let rows = stmt.query(&[&order_id_string])?;
     let mut result: i32 = 0;
-    // Get first row
+
+    // Get first row only
     for row in rows {
         let r = row?;
         result = r.get(0)?;
         break;
     }
+
     Ok(result)
 }
 
@@ -62,10 +62,10 @@ pub fn get_correct_store_id(
     conn: &oracle::Connection,
 ) -> Result<i32, Box<dyn std::error::Error>> {
     println!("Getting Store ID");
-    let sql = r#"SELECT QTY_STORE_02, QTY_STORE_08 FROM ODBC_JHC.JHC_INVDATA WHERE FOREIGN_ITEM_CODE = :1"#;
+    let sql = fs::read_to_string(path::Path::new("src/sql/get_store_quantity.sql"))?;
     let mut stores: Vec<(i32, i32, i32)> = Vec::new();
     for item in items {
-        let mut stmt = conn.statement(sql).build()?;
+        let mut stmt = conn.statement(sql.as_str()).build()?;
         let res = stmt.query(&[&item.sku])?;
         for i in res {
             if i.is_ok() {
@@ -106,7 +106,7 @@ pub fn create_detail_records(
     open_trans_no: i32,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("Creating Detail Records");
-    let sql = fs::read_to_string(path::Path::new("src/sql/create_detail_records.sql"))?;
+    let sql = fs::read_to_string(path::Path::new("src/sql/create_detail_record.sql"))?;
     let mut row_order = 1;
     let mut total_discount: f64 = 0.0;
     for product in products {
@@ -149,9 +149,8 @@ pub fn create_detail_records(
 
     // Update Total Discount
     println!("Updating Total Discount");
-    let sql_2 = r#"
-    UPDATE jhc.INV_STORE_TRANS_MAS SET DISCOUNT_AMOUNT = :v_total_discount WHERE OPEN_TRANS_NO = :v_open_trans_no AND TRANS_ID = 13"#;
-    let mut stmt_2 = connection.statement(sql_2).build()?;
+    let sql = fs::read_to_string(path::Path::new("src/sql/update_total_discount.sql"))?;
+    let mut stmt_2 = connection.statement(sql.as_str()).build()?;
     stmt_2.execute_named(&[
         ("v_total_discount", &total_discount),
         ("v_open_trans_no", &open_trans_no),

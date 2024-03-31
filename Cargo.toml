@@ -10,10 +10,13 @@ description = "An actix web server that manager shopify orders through webhooks 
 [dependencies]
 actix-web = "4.5.1"
 axum = "0.6"
+base64 = "0.22.0"
 chrono = "0.4.35"
 dotenv = "0.15.0"
+hmac = "0.12.1"
 ngrok = { version = "0.13.1", features = ["hyper", "axum"] }
 oracle = "0.5.7"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
+sha2 = "0.10.8"
 tokio = { version = "1.36.0", features = ["full", "rt-multi-thread", "macros"] }

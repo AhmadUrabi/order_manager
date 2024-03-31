@@ -1,0 +1,1 @@
+UPDATE jhc.INV_STORE_TRANS_MAS SET DISCOUNT_AMOUNT = :v_total_discount WHERE OPEN_TRANS_NO = :v_open_trans_no AND TRANS_ID = 13
