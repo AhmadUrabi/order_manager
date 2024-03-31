@@ -2,6 +2,8 @@
 name = "order_manager"
 version = "0.1.0"
 edition = "2021"
+authors = ["Ahmad Urabi"]
+description = "An actix web server that manager shopify orders through webhooks and creates them in an Oracle database"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
